@@ -4,10 +4,9 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version, agent_name_len_limit
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, agent_name_len_limit
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
-WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
 
 
 class WazuhException(Exception):
