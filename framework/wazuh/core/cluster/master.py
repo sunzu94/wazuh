@@ -801,8 +801,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     if n_errors['warnings'].get(data['cluster_item_key']) is None \
                                     else n_errors['warnings'][data['cluster_item_key']] + 1
 
-                                self.logger.debug2(f"Received group of an non-existent agent '{agent_id}'")
+                                self.logger.debug(f"Received group of an non-existent agent '{agent_id}'")
                                 continue
+
+                            self.logger.debug(f"Received group from agent '{agent_id}'")
 
                             # Format the file_data specified inside the merged file.
                             try:
