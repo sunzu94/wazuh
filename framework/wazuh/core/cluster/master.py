@@ -695,7 +695,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = wazuh.core.cluster.cluster.compress_files(
                 self.name, master_files_paths, worker_files_ko,
-                max_zip_size=self.cluster_items['intervals']['communication']['max_zip_size']
+                max_zip_size=self.cluster_items['intervals']['master']['max_zip_size']
             )
 
             try:
