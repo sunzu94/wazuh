@@ -55,6 +55,15 @@ void fim_db_init(int storage,
                  logging_callback_t log_callback);
 #endif
 
+/**
+ * @brief Get the number of entries in the DB.
+ *
+ * @param n_entries Variable to store the value.
+ *
+ * @return Number of entries in the DB.
+ */
+int fim_db_get_count_entries();
+
 #ifdef __cplusplus
 }
 #endif // _cplusplus

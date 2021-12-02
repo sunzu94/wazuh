@@ -11,6 +11,8 @@
 
 #include "FDBHMockInterface.hpp"
 #include "dbItem.hpp"
+#include "dbsync.hpp"
+#include "rsync.hpp"
 
 #ifndef _FIMDB_HELPERS_UT_INTERFACE_
 #define _FIMDB_HELPERS_UT_INTERFACE_

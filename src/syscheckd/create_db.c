@@ -613,9 +613,9 @@ void fim_check_db_state() {
     cJSON *json_event = NULL;
     char *json_plain = NULL;
     char alert_msg[OS_SIZE_256] = {'\0'};
-    /* DEPRECATED CODE
+
     nodes_count = fim_db_get_count_entries(syscheck.database);
-    */
+
     if (nodes_count < 0) {
         mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
         return;

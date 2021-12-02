@@ -10,7 +10,11 @@
 #include "db.hpp"
 #include "commonDefs.h"
 #include "fimDB.hpp"
+#ifndef WAZUH_UNIT_TESTING
 #include "fimDBHelper.hpp"
+#else
+#include "fimDBHelpersUTInterface.hpp"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,6 +72,19 @@ void fim_db_init(int storage,
         log_callback(LOG_ERROR_EXIT, errorMessage.c_str());
     }
 }
+
+}
+
+int fim_db_get_count_entries()
+{
+    int n_entries {-1};
+    FIMDBHelper::getCount<FIMDB>("file_entry", n_entries);
+#ifdef WIN32
+    int n_values;
+    FIMDBHelper::getCount<FIMDB>("registry_data", n_values);
+    n_entries += n_values;
+#endif
+    return n_entries;
 
 #ifdef __cplusplus
 }
