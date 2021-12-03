@@ -264,8 +264,7 @@ Start-Sleep 10
 # Check status file
 $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
 $counter = 5
-# Forces fail
-$status = $null
+
 while($status -eq $null -And $counter -gt 0)
 {
     $counter--
@@ -274,6 +273,8 @@ while($status -eq $null -And $counter -gt 0)
 }
 write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
 
+# Forces fail
+$status = $null
 If ($status -eq $null)
 {
     Get-Service -Name "Wazuh" | Stop-Service
