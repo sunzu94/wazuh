@@ -59,7 +59,7 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-    void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+    void removeFromDB(const std::string& tableName, const std::string& filter)
     {
         const auto deleteJsonStatement = R"({
                                                 "table": "",
@@ -72,7 +72,7 @@ namespace FIMDBHelper
         })";
         auto deleteJson = nlohmann::json::parse(deleteJsonStatement);
         deleteJson["table"] = tableName;
-        deleteJson["query"]["data"] = {filter};
+        deleteJson["query"]["where_filter_opt"] = filter;
 
         T::getInstance().removeItem(deleteJson);
     }
