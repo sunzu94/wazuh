@@ -510,9 +510,10 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
 
     entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
-        if (OS_IPFound(srcip, entry->ip)) {
-            return ((int)entry->keyid);
-        }
+        //if (OS_IPFound(srcip, entry->ip)) {
+        //    return ((int)entry->keyid);
+        //}
+        return ((int)entry->keyid);
     }
 
     return (-1);
