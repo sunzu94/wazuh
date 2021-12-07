@@ -10,6 +10,9 @@
 #define DB_COMMONDEFS_H
 #include "logging_helper.h"
 
+#define FIMDB_REGISTRY_KEY_TABLENAME "registry_key"
+#define FIMDB_REGISTRY_VALUE_TABLENAME "registry_value"
+
 typedef enum FIMDBErrorCodes
 {
     FIMDB_OK = 0,
