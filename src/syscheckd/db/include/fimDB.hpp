@@ -17,13 +17,6 @@
 #include <condition_variable>
 #include <mutex>
 
-#ifdef __cplusplus
-extern "C"
-{
-#include "logging_helper.h"
-}
-#endif
-
 constexpr auto CREATE_FILE_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS file_entry (
@@ -222,7 +215,6 @@ constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
     //TO DO
 };
 
-
 class FIMDB
 {
     public:
@@ -305,6 +297,10 @@ class FIMDB
         {
             m_stopping = true;
         };
+
+        inline void loggingFunction(modules_log_level_t logType, const std::string& msg){
+            this->m_loggingFunction(logType, msg);
+        }
 
 
     private:
