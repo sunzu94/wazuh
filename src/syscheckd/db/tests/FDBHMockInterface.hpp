@@ -1,56 +1,42 @@
-#include "fimDB.hpp"
-#include "FDBHMockClass.hpp"
+#ifndef _FIM_DB_HELPERS_MOCK_CLASS_
+#define _FIM_DB_HELPERS_MOCK_CLASS_
 
-#ifndef _FIMDB_HELPERS_MOCK_INTERFACE_
-#define _FIMDB_HELPERS_MOCK_INTERFACE_
-
-namespace FIMDBHelpersUTInterface {
-
-#ifndef WIN32
-
-    void initDB(unsigned int sync_interval, unsigned int file_limit,
-                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
-    {
-        FIMDBHelpersMock::getInstance().initDB(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
-    }
-#else
-
-    void initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
-                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
-    {
-        FIMDBHelpersMock::getInstance().initDB(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
-                              handler_RSync);
-    }
-#endif
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+#include "fimCommonDefs.h"
+#include "dbsync.hpp"
+#include "rsync.hpp"
 
 
-    void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
-    {
-        FIMDBHelpersMock::getInstance().removeFromDB(tableName, filter);
-    }
+class FIMDB {
+    public:
+        static FIMDB& getInstance(){
+            static FIMDB mock;
+            return mock;
+        }
+        MOCK_METHOD(void, loggingFunction, (modules_log_level_t, const char*), ());
+};
 
-    void getCount(const std::string & tableName, int & count)
-    {
-        FIMDBHelpersMock::getInstance().getCount(tableName, count);
-    }
+class FIMDBHelpersMock {
+    public:
+        static FIMDBHelpersMock& getInstance(){
+            static FIMDBHelpersMock mock;
+            return mock;
+        }
 
-    void insertItem(const std::string & tableName, const nlohmann::json & item)
-    {
-        FIMDBHelpersMock::getInstance().insertItem(tableName, item);
-    }
-
-    void updateItem(const std::string & tableName, const nlohmann::json & item)
-    {
-
-        FIMDBHelpersMock::getInstance().updateItem(tableName, item);
-    }
-
-    void getDBItem(nlohmann::json & item, const nlohmann::json & query)
-    {
-        FIMDBHelpersMock::getInstance().executeQuery(item, query);
-    }
-}
+        MOCK_METHOD(void, initDB, (unsigned int, unsigned int,
+                                fim_sync_callback_t, logging_callback_t,
+                                std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
+        MOCK_METHOD(void, initDB, (unsigned int, unsigned int, unsigned int, fim_sync_callback_t, logging_callback_t,
+                                std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
+        MOCK_METHOD(void, removeFromDB, (const std::string& tableName, const std::string& filter), ());
+        MOCK_METHOD(void, getCount, (const std::string&, int&), ());
+        MOCK_METHOD(void, insertItem, (const std::string&, const nlohmann::json&), ());
+        MOCK_METHOD(void, updateItem, (const std::string&, const nlohmann::json&), ());
+        MOCK_METHOD(void, getDBItem, (nlohmann::json&, const nlohmann::json&), ());
+        MOCK_METHOD(void, removeItem, (const std::string&, const nlohmann::json&), ());
+        MOCK_METHOD(void, dbQuery, (const std::string&, const nlohmann::json&, const std::string&,
+                    const std::string&), ());
+};
 
 #endif

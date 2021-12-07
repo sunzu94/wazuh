@@ -24,7 +24,7 @@ namespace FIMDBHelper
                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
-        FIMDBHelpersUTInterface::initDB(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
+        FIMDBHelpersMock::getInstance().initDB(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
     }
 #else
 
@@ -32,40 +32,55 @@ namespace FIMDBHelper
                              fim_sync_callback_t sync_callback, logging_callback_t logCallback,
                              std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
-        FIMDBHelpersUTInterface::initDB(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
+        FIMDBHelpersMock::getInstance().initDB(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
                               handler_RSync);
     }
 #endif
 
     template<typename T>
-    void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+    void removeFromDB(const std::string& tableName, const std::string& filter)
     {
-        FIMDBHelpersUTInterface::removeFromDB(tableName, filter);
+        FIMDBHelpersMock::getInstance().removeFromDB(tableName, filter);
     }
 
     template<typename T>
     void getCount(const std::string & tableName, int & count)
     {
 
-        FIMDBHelpersUTInterface::getCount(tableName, count);
+        FIMDBHelpersMock::getInstance().getCount(tableName, count);
     }
 
     template<typename T>
     void insertItem(const std::string & tableName, const nlohmann::json & item)
     {
-        FIMDBHelpersUTInterface::insertItem(tableName, item);
+        FIMDBHelpersMock::getInstance().insertItem(tableName, item);
     }
 
     template<typename T>
     void updateItem(const std::string & tableName, const nlohmann::json & item)
     {
-        FIMDBHelpersUTInterface::updateItem(tableName, item);
+        FIMDBHelpersMock::getInstance().updateItem(tableName, item);
     }
 
     template<typename T>
     void getDBItem(nlohmann::json & item, const nlohmann::json & query)
     {
-        FIMDBHelpersUTInterface::getDBItem(item, query);
+        FIMDBHelpersMock::getInstance().getDBItem(item, query);
+    }
+
+    nlohmann::json dbQuery(const std::string & tableName, const nlohmann::json & columnList, const std::string & filter,
+                 const std::string & order)
+    {
+        nlohmann::json query;
+        query["table"] = tableName;
+        query["query"]["column_list"] = columnList["column_list"];
+        query["query"]["row_filter"] = filter;
+        query["query"]["distinct_opt"] = false;
+        query["query"]["order_by_opt"] = order;
+        query["query"]["count_opt"] = 100;
+
+        FIMDBHelpersMock::getInstance().dbQuery(tableName, columnList, filter, order);
+        return query;
     }
 }
 
