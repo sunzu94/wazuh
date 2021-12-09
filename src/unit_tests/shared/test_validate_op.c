@@ -960,6 +960,116 @@ void OS_IPFoundList_valid_ipv6(void **state)
     free(ret_ip);
 }
 
+void OS_CIDRtoStr_any(void **state)
+{
+    char ip_to_test[IPSIZE] = {0};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+
+    os_strdup("any", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
+
+    ret_ip->is_ipv6 = false;
+    ret_ip->ipv4->ip_address = 0x0;
+    ret_ip->ipv4->netmask = 0x0;
+
+    ret = OS_CIDRtoStr(ret_ip, ip_to_test, IPSIZE);
+    assert_int_equal(ret, 0);
+    assert_string_equal(ip_to_test, "any");
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_CIDRtoStr_valid_ipv4(void **state)
+{
+    char ip_to_test[IPSIZE] = {0};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+
+    os_strdup("16.16.16.16", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
+
+    ret_ip->is_ipv6 = false;
+    ret_ip->ipv4->ip_address = 0x10101010;
+    ret_ip->ipv4->netmask = 0xFFFFFFFF;
+
+    ret = OS_CIDRtoStr(ret_ip, ip_to_test, IPSIZE);
+    assert_int_equal(ret, 0);
+    assert_string_equal(ip_to_test, "16.16.16.16");
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_CIDRtoStr_valid_ipv6(void **state)
+{
+    char ip_to_test[IPSIZE] = {0};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+
+    os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
+
+    ret_ip->is_ipv6 = true;
+
+    ret = OS_CIDRtoStr(ret_ip, ip_to_test, IPSIZE);
+    assert_int_equal(ret, 0);
+    assert_string_equal(ip_to_test, "0101:0101:0101:0101:0101:0101:0101:0101");
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_CIDRtoStr_valid_ipv4_CIDR_24(void **state)
+{
+    char ip_to_test[IPSIZE] = {0};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+
+    os_strdup("16.16.16.16", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
+
+    ret_ip->is_ipv6 = false;
+    ret_ip->ipv4->ip_address = 0x10101010;
+    /* FFFFFF = 24 bits */
+    ret_ip->ipv4->netmask = 0xFFFFFF;
+
+    ret = OS_CIDRtoStr(ret_ip, ip_to_test, IPSIZE);
+    assert_int_equal(ret, 0);
+    assert_string_equal(ip_to_test, "16.16.16.16/24");
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_CIDRtoStr_valid_ipv4_CIDR_0(void **state)
+{
+    char ip_to_test[IPSIZE] = {0};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+
+    os_strdup("32.32.32.32", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
+
+    ret_ip->is_ipv6 = false;
+    ret_ip->ipv4->ip_address = 0x20202020;
+    /* Zero bits */
+    ret_ip->ipv4->netmask = 0x0;
+
+    ret = OS_CIDRtoStr(ret_ip, ip_to_test, IPSIZE);
+    assert_int_equal(ret, 0);
+    assert_string_equal(ip_to_test, "32.32.32.32/0");
+
+    w_free_os_ip(ret_ip);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1006,6 +1116,12 @@ int main(void) {
         cmocka_unit_test(OS_IPFoundList_valid_ipv4_not_found),
         cmocka_unit_test(OS_IPFoundList_valid_ipv6_fail),
         cmocka_unit_test(OS_IPFoundList_valid_ipv6),
+        // Test OS_CIDRtoStr
+        cmocka_unit_test(OS_CIDRtoStr_any),
+        cmocka_unit_test(OS_CIDRtoStr_valid_ipv4),
+        cmocka_unit_test(OS_CIDRtoStr_valid_ipv6),
+        cmocka_unit_test(OS_CIDRtoStr_valid_ipv4_CIDR_24),
+        cmocka_unit_test(OS_CIDRtoStr_valid_ipv4_CIDR_0),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
