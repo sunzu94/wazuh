@@ -773,6 +773,193 @@ void OS_IPFound_valid_ipv6_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
+void OS_IPFoundList_fail(void **state)
+{
+    char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+
+    will_return(__wrap_get_ipv4_numeric, -1);
+    will_return(__wrap_get_ipv6_numeric, -1);
+
+    ret = OS_IPFoundList(ip_to_test, &ret_ip);
+    assert_int_equal(ret, 0);
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_IPFoundList_valid_ipv4(void **state)
+{
+    char ip_to_test[] = {"16.16.16.32"};
+
+    int ret = 0;
+    os_ip **ret_ip;
+    os_calloc(3, sizeof(os_ip *), ret_ip);
+    os_calloc(1, sizeof(os_ip), ret_ip[0]);
+    os_calloc(1, sizeof(os_ip), ret_ip[1]);
+
+    os_strdup("16.16.16.16", (*ret_ip[0]).ip);
+    os_calloc(1, sizeof(os_ipv4), (*ret_ip[0]).ipv4);
+
+    (*ret_ip[0]).ipv4->ip_address = 0x10101010;
+    (*ret_ip[0]).ipv4->netmask = 0xFFFFFFFF;
+
+    os_strdup("16.16.16.32", (*ret_ip[1]).ip);
+    os_calloc(1, sizeof(os_ipv4), (*ret_ip[1]).ipv4);
+
+    (*ret_ip[1]).ipv4->ip_address = 0x10101020;
+    (*ret_ip[1]).ipv4->netmask = 0xFFFFFFFF;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x10101020);
+
+    ret = OS_IPFoundList(ip_to_test, ret_ip);
+    assert_int_equal(ret, 1);
+
+    w_free_os_ip(ret_ip[0]);
+    w_free_os_ip(ret_ip[1]);
+    free(ret_ip);
+}
+
+void OS_IPFoundList_valid_ipv4_negated(void **state)
+{
+    char ip_to_test[] = {"!16.16.16.16"};
+
+    int ret = 0;
+    os_ip **ret_ip;
+    os_calloc(2, sizeof(os_ip *), ret_ip);
+    os_calloc(1, sizeof(os_ip), ret_ip[0]);
+
+    os_strdup("!16.16.16.16", (*ret_ip[0]).ip);
+    os_calloc(1, sizeof(os_ipv4), (*ret_ip[0]).ipv4);
+
+    (*ret_ip[0]).ipv4->ip_address = 0x10101010;
+    (*ret_ip[0]).ipv4->netmask = 0xFFFFFFFF;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x10101010);
+
+    ret = OS_IPFoundList(ip_to_test, ret_ip);
+    assert_int_equal(ret, 0);
+
+    w_free_os_ip(ret_ip[0]);
+    w_free_os_ip(ret_ip[1]);
+    free(ret_ip);
+}
+
+void OS_IPFoundList_valid_ipv4_not_found(void **state)
+{
+    char ip_to_test[] = {"16.16.16.32"};
+
+    int ret = 0;
+    os_ip **ret_ip;
+    os_calloc(4, sizeof(os_ip *), ret_ip);
+    os_calloc(1, sizeof(os_ip), ret_ip[0]);
+    os_calloc(1, sizeof(os_ip), ret_ip[1]);
+    os_calloc(1, sizeof(os_ip), ret_ip[2]);
+
+    os_strdup("16.16.16.16", (*ret_ip[0]).ip);
+    os_calloc(1, sizeof(os_ipv4), (*ret_ip[0]).ipv4);
+
+    (*ret_ip[0]).ipv4->ip_address = 0x10101010;
+    (*ret_ip[0]).ipv4->netmask = 0xFFFFFFFF;
+
+    os_strdup("16.16.16.32", (*ret_ip[1]).ip);
+    os_calloc(1, sizeof(os_ipv4), (*ret_ip[1]).ipv4);
+
+    (*ret_ip[1]).ipv4->ip_address = 0x10101020;
+    (*ret_ip[1]).ipv4->netmask = 0xFFFFFFFF;
+
+    os_strdup("16.16.32.32", (*ret_ip[2]).ip);
+    os_calloc(1, sizeof(os_ipv4), (*ret_ip[2]).ipv4);
+
+    (*ret_ip[2]).ipv4->ip_address = 0x10102020;
+    (*ret_ip[2]).ipv4->netmask = 0xFFFFFFFF;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x10202020);
+
+    ret = OS_IPFoundList(ip_to_test, ret_ip);
+    assert_int_equal(ret, 0);
+
+    w_free_os_ip(ret_ip[0]);
+    w_free_os_ip(ret_ip[1]);
+    w_free_os_ip(ret_ip[2]);
+    free(ret_ip);
+}
+
+void OS_IPFoundList_valid_ipv6_fail(void **state)
+{
+    char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
+
+    int ret = 0;
+    os_ip **ret_ip;
+    os_calloc(3, sizeof(os_ip *), ret_ip);
+    os_calloc(1, sizeof(os_ip), ret_ip[0]);
+    os_calloc(1, sizeof(os_ip), ret_ip[1]);
+
+    for(unsigned int i = 0; i < 2; i++) {
+        os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
+        os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
+
+        unsigned int a = 0;
+        for(a = 0; a < 16; a++) {
+            (*ret_ip[i]).ipv6->ip_address[a] = 0x10;
+        }
+        for(a = 0; a < 16; a++) {
+            (*ret_ip[i]).ipv6->netmask[a] = 0xFF;
+        }
+    }
+
+    will_return(__wrap_get_ipv4_numeric, -1);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    ret = OS_IPFoundList(ip_to_test, ret_ip);
+    assert_int_equal(ret, 0);
+
+    w_free_os_ip(ret_ip[0]);
+    w_free_os_ip(ret_ip[1]);
+    free(ret_ip);
+}
+
+void OS_IPFoundList_valid_ipv6(void **state)
+{
+    char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
+
+    int ret = 0;
+    os_ip **ret_ip;
+    os_calloc(3, sizeof(os_ip *), ret_ip);
+    os_calloc(1, sizeof(os_ip), ret_ip[0]);
+    os_calloc(1, sizeof(os_ip), ret_ip[1]);
+
+    for(unsigned int i = 0; i < 2; i++) {
+        os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
+        os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
+
+        unsigned int a = 0;
+        for(a = 0; a < 16; a++) {
+            (*ret_ip[i]).ipv6->ip_address[a] = 0x20;
+        }
+        for(a = 0; a < 16; a++) {
+            (*ret_ip[i]).ipv6->netmask[a] = 0xFF;
+        }
+    }
+
+    will_return(__wrap_get_ipv4_numeric, -1);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x20);
+
+    ret = OS_IPFoundList(ip_to_test, ret_ip);
+    assert_int_equal(ret, 1);
+
+    w_free_os_ip(ret_ip[0]);
+    w_free_os_ip(ret_ip[1]);
+    free(ret_ip);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -812,6 +999,13 @@ int main(void) {
         cmocka_unit_test(OS_IPFound_valid_ipv4_negated),
         cmocka_unit_test(OS_IPFound_valid_ipv6),
         cmocka_unit_test(OS_IPFound_valid_ipv6_fail),
+        // Test OS_IPFoundList
+        cmocka_unit_test(OS_IPFoundList_fail),
+        cmocka_unit_test(OS_IPFoundList_valid_ipv4),
+        cmocka_unit_test(OS_IPFoundList_valid_ipv4_negated),
+        cmocka_unit_test(OS_IPFoundList_valid_ipv4_not_found),
+        cmocka_unit_test(OS_IPFoundList_valid_ipv6_fail),
+        cmocka_unit_test(OS_IPFoundList_valid_ipv6),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
