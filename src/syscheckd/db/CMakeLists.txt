@@ -56,6 +56,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
+include_directories(${SRC_FOLDER}/config)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 link_directories(${CMAKE_SOURCE_DIR}/db/src)
 
@@ -75,9 +76,9 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
-                          #  ${CMAKE_SOURCE_DIR}/src/file.cpp
+                           #${CMAKE_SOURCE_DIR}/src/file.cpp
                            ${CMAKE_SOURCE_DIR}/src/fimDB.cpp
-                          #  ${CMAKE_SOURCE_DIR}/src/registry.cpp
+                           ${CMAKE_SOURCE_DIR}/src/registry.cpp
               )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp

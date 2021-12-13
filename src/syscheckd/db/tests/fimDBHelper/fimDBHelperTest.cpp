@@ -43,7 +43,7 @@ TEST_F(FIMHelperTest, insertItemToDatabase)
 TEST_F(FIMHelperTest, deleteItemToDatabase)
 {
     std::string tableName;
-    nlohmann::json filter;
+    std::string filter;
     EXPECT_CALL(FIMDBMOCK::getInstance(), removeItem(testing::_));
     FIMDBHelper::removeFromDB<FIMDBMOCK>(tableName, filter);
 }
