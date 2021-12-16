@@ -16,6 +16,19 @@
 
 #include <fcntl.h>
 
+class UtilsMockTrampoline{
+    public:
+        static std::string exec_trampoline(const std::string& cmd, const size_t bufferSize = 128){
+            return m_mock->exec(cmd,bufferSize);
+        }
+        static UtilsMock * m_mock;
+}
+
+class UtilsMock{
+    public:
+        MOCK_METHOD(std::string, exec,(const std::string&, const size_t));
+}
+
 using ::testing::_;
 using ::testing::Return;
 using ::testing::DoAll;
@@ -374,4 +387,20 @@ TEST(RpmLibTest, TwoPackages)
     }
 
     EXPECT_EQ(count, 2);
+}
+
+TEST_F(RpmLibTest, Fallback)
+{
+    auto mock {std::make_shared<RpmLibMock>()};
+    RpmPackageManager otherRpm{mock};
+    EXPECT_THROW({
+        try {
+            RpmPackageManager rpm{mock};
+        }
+        catch(const std::runtime_error &e)
+        {
+            EXPECT_STREQ(e.what(), "there is another RPM instance already created");
+            throw;
+        }
+    }, std::runtime_error);
 }
