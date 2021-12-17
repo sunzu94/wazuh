@@ -3,6 +3,12 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+from concurrent.futures import ProcessPoolExecutor
+
+master_pool = ProcessPoolExecutor(max_workers=2)
+master_pool.map(lambda: None, range(master_pool._max_workers))
+
 import argparse
 import asyncio
 import logging
@@ -11,8 +17,6 @@ import sys
 from signal import signal, Signals, SIGTERM, SIG_DFL
 
 from psutil import Process
-
-from wazuh.core.utils import check_pid
 
 
 #
@@ -65,6 +69,10 @@ def exit_handler(signum, frame):
         os.kill(os.getpid(), signum)
 
 
+def process_spawn_sleep():
+    """Simple task to force the cluster pool spawn all its children."""
+    return
+
 #
 # Master main
 #
@@ -79,9 +87,8 @@ async def master_main(args, cluster_config, cluster_items, logger):
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
     # Spawn pool processes if needed
-    if cluster_items['intervals']['master']['process_pool_debug']:
-        my_server.task_pool.map(cluster_utils.process_spawn_sleep,
-                                range(my_server.task_pool._max_workers))
+    my_server.task_pool = master_pool
+    # my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
@@ -114,6 +121,7 @@ if __name__ == '__main__':
     import wazuh.core.cluster.cluster
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import pyDaemonModule, common, configuration
+    from wazuh.core.utils import check_pid
 
     parser = argparse.ArgumentParser()
     ####################################################################################################################

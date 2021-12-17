@@ -17,6 +17,7 @@ from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
 import wazuh.core.cluster.cluster
+from wazuh.core.cluster.task_pool_functions import *
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, common as c_common
@@ -971,8 +972,7 @@ class Master(server.AbstractServer):
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
         self.handler_class = MasterHandler
-        self.task_pool = ProcessPoolExecutor(
-            max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+        self.task_pool = None
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
@@ -1004,9 +1004,10 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
+                task = self.loop.run_in_executor(self.task_pool, partial(get_files_status, cluster_integrity_mtime.get(), True))
                 # With this we avoid that each worker starts integrity_check more than once per local_integrity
                 self.integrity_control = await asyncio.wait_for(task, timeout=None)
+                cluster_integrity_mtime.set(self.integrity_control)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:
