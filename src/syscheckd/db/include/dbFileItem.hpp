@@ -14,31 +14,6 @@
 #include "json.hpp"
 #include "dbItem.hpp"
 
-struct FimFileDataDeleter
-{
-    void operator()(fim_entry* fimFile)
-    {
-        if (fimFile)
-        {
-            if (fimFile->file_entry.data)
-            {
-                if (fimFile->file_entry.data->gid)
-                {
-                    std::free(fimFile->file_entry.data->gid);
-                }
-
-                if (fimFile->file_entry.data->uid)
-                {
-                    std::free(fimFile->file_entry.data->uid);
-                }
-
-                std::free(fimFile->file_entry.data);
-            }
-
-            std::free(fimFile);
-        }
-    }
-};
 
 class FileItem final : public DBItem
 {
@@ -65,46 +40,6 @@ class FileItem final : public DBItem
             m_uid = std::atoi(fim->file_entry.data->uid);
             m_username = std::string(fim->file_entry.data->user_name);
             createJSON();
-            createFimEntry();
-        }
-
-        FileItem(const std::string& path,
-                 const std::string& checksum,
-                 const time_t& lastEvent,
-                 const fim_event_mode& mode,
-                 const unsigned int& scanned,
-                 const int& options,
-                 const int& uid,
-                 const int& gid,
-                 const unsigned int& time,
-                 const unsigned int& size,
-                 const unsigned long& dev,
-                 const unsigned long int& inode,
-                 const std::string& attributes,
-                 const std::string& groupname,
-                 const std::string& md5,
-                 const std::string& perm,
-                 const std::string& sha1,
-                 const std::string& sha256,
-                 const std::string& username)
-            : DBItem(path, scanned, lastEvent, checksum, mode)
-            , m_options( options )
-            , m_gid ( gid )
-            , m_uid( uid )
-            , m_size( size )
-            , m_dev( dev )
-            , m_inode( inode )
-            , m_time( time )
-            , m_attributes( attributes )
-            , m_groupname( groupname )
-            , m_md5( md5 )
-            , m_perm( perm )
-            , m_sha1( sha1)
-            , m_sha256( sha256 )
-            , m_username( username )
-        {
-            createFimEntry();
-            createJSON();
         }
 
         FileItem(const nlohmann::json& fim)
@@ -125,14 +60,13 @@ class FileItem final : public DBItem
             m_uid = fim.at("uid");
             m_username = fim.at("user_name");
 
-            createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
         };
 
         ~FileItem() = default;
-        fim_entry* toFimEntry()
+        void toFimEntry(fim_entry& fim)
         {
-            return m_fimEntry.get();
+            createFimEntry(fim);
         };
 
         nlohmann::json* toJSON()
@@ -155,10 +89,9 @@ class FileItem final : public DBItem
         std::string                                     m_sha1;
         std::string                                     m_sha256;
         std::string                                     m_username;
-        std::unique_ptr<fim_entry, FimFileDataDeleter>  m_fimEntry;
         std::unique_ptr<nlohmann::json>                 m_statementConf;
 
-        void createFimEntry();
+        void createFimEntry(fim_entry& fim);
         void createJSON();
 };
 #endif //_FILEITEM_HPP

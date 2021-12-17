@@ -10,29 +10,30 @@
  */
 #include "dbRegistryKey.hpp"
 
-void RegistryKey::createFimEntry()
+void RegistryKey::createFimEntry(fim_entry& fim)
 {
-    fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
-    fim_registry_key* key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
+    fim_registry_key* key = fim.registry_entry.key;
 
-    fim->type = FIM_TYPE_REGISTRY;
+    fim.type = FIM_TYPE_REGISTRY;
     key->id = std::atoi(m_identifier.c_str());
     key->arch = m_arch;
     std::strncpy(key->checksum, m_checksum.c_str(), sizeof(key->checksum));
-    key->gid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
-    std::strncpy(key->gid, std::to_string(m_gid).c_str(), sizeof(std::to_string(m_gid).size()));
-    key->group_name = const_cast<char*>(m_groupname.c_str());
+    key->gid = reinterpret_cast<char*>(std::calloc(std::to_string(m_gid).length()+1, sizeof(char)));
+    std::strncpy(key->gid, std::to_string(m_gid).c_str(), std::to_string(m_gid).size()+1);
+    key->group_name = reinterpret_cast<char*>(std::calloc(m_groupname.length()+1, sizeof(char)));
+    std::strncpy(key->group_name, m_groupname.c_str(), m_groupname.length()+1);
     key->last_event = m_lastEvent;
     key->mtime = m_time;
-    key->path = const_cast<char*>(m_path.c_str());
-    key->perm = const_cast<char*>(m_perm.c_str());
+    key->path = reinterpret_cast<char*>(std::calloc(m_path.length()+1, sizeof(char)));
+    std::strncpy(key->path, m_path.c_str(), m_path.length()+1);
+    key->perm = reinterpret_cast<char*>(std::calloc(m_perm.length()+1, sizeof(char)));
+    std::strncpy(key->perm, m_perm.c_str(), m_perm.length()+1);
     key->scanned =  m_scanned;
-    key->uid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
-    std::strncpy(key->uid, std::to_string(m_uid).c_str(), sizeof(std::to_string(m_uid).size()));
-    key->user_name = const_cast<char*>(m_username.c_str());
-    fim->registry_entry.key = key;
+    key->uid = reinterpret_cast<char*>(std::calloc(std::to_string(m_uid).length()+1, sizeof(char)));
+    std::strncpy(key->uid, std::to_string(m_uid).c_str(), std::to_string(m_uid).length()+1);
+    key->user_name = reinterpret_cast<char*>(std::calloc(m_username.length()+1, sizeof(char)));
+    std::strncpy(key->user_name, m_username.c_str(), m_username.length()+1);
 
-    m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
 }
 
 void RegistryKey::createJSON()

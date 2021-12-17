@@ -14,31 +14,6 @@
 #include "json.hpp"
 #include "dbItem.hpp"
 
-struct FimRegistryKeyDeleter
-{
-    void operator()(fim_entry* fimRegistryKey)
-    {
-        if (fimRegistryKey)
-        {
-            if (fimRegistryKey->registry_entry.key)
-            {
-                if (fimRegistryKey->registry_entry.key->gid)
-                {
-                    std::free(fimRegistryKey->registry_entry.key->gid);
-                }
-
-                if (fimRegistryKey->registry_entry.key->uid)
-                {
-                    std::free(fimRegistryKey->registry_entry.key->uid);
-                }
-
-                std::free(fimRegistryKey->registry_entry.key);
-            }
-
-            std::free(fimRegistryKey);
-        }
-    }
-};
 
 class RegistryKey final : public DBItem
 {
@@ -59,33 +34,6 @@ class RegistryKey final : public DBItem
             m_username = std::string(fim->registry_entry.key->user_name);
             m_time = fim->registry_entry.key->mtime;
             createJSON();
-            createFimEntry();
-        }
-
-        RegistryKey(const std::string& id,
-                    const std::string& checksum,
-                    const time_t& lastEvent,
-                    const unsigned int& scanned,
-                    const int& arch,
-                    const int& gid,
-                    const std::string& groupname,
-                    const std::string& path,
-                    const std::string& perm,
-                    const unsigned int& time,
-                    const int& uid,
-                    const std::string& username)
-            : DBItem(id, scanned, lastEvent, checksum, FIM_SCHEDULED)
-            , m_arch( arch )
-            , m_gid ( gid )
-            , m_uid( uid )
-            , m_groupname( groupname )
-            , m_path( path )
-            , m_perm( perm )
-            , m_username( username )
-            , m_time( time )
-        {
-            createFimEntry();
-            createJSON();
         }
 
         RegistryKey(const nlohmann::json& fim)
@@ -99,17 +47,16 @@ class RegistryKey final : public DBItem
             m_perm = fim.at("perm");
             m_username = fim.at("user_name");
             m_time = fim.at("mtime");
-            createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
         }
 
         ~RegistryKey() = default;
-        fim_entry* toFimEntry()
+        void toFimEntry(fim_entry& fim)
         {
-            return m_fimEntry.get();
+            createFimEntry(fim);
         };
 
-        nlohmann::json* toJSON()
+        const nlohmann::json* toJSON() const
         {
             return m_statementConf.get();
         };
@@ -123,10 +70,9 @@ class RegistryKey final : public DBItem
         std::string                                         m_perm;
         std::string                                         m_username;
         time_t                                              m_time;
-        std::unique_ptr<fim_entry, FimRegistryKeyDeleter>   m_fimEntry;
         std::unique_ptr<nlohmann::json>                     m_statementConf;
 
-        void createFimEntry();
+        void createFimEntry(fim_entry& fim);
         void createJSON();
 };
 #endif //_REGISTRYKEY_HPP

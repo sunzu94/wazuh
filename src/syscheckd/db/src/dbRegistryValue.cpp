@@ -10,24 +10,20 @@
  */
 #include "dbRegistryValue.hpp"
 
-void RegistryValue::createFimEntry()
+void RegistryValue::createFimEntry(fim_entry& fim)
 {
-    fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
-    fim_registry_value_data* value = reinterpret_cast<fim_registry_value_data*>(std::calloc(1, sizeof(fim_registry_value_data)));
-
-    fim->type = FIM_TYPE_REGISTRY;
-    value->size = m_size;
-    value->id = m_keyUid;
-    value->name = const_cast<char*>(m_identifier.c_str());
-    std::strncpy(value->hash_md5, m_md5.c_str(), sizeof(value->hash_md5));
-    std::strncpy(value->hash_sha1, m_sha1.c_str(), sizeof(value->hash_sha1));
-    std::strncpy(value->hash_sha256, m_sha256.c_str(), sizeof(value->hash_sha256));
-    value->mode = m_mode;
-    value->last_event = m_lastEvent;
-    value->scanned = m_scanned;
-    std::strncpy(value->checksum, m_checksum.c_str(), sizeof(value->checksum));
-    fim->registry_entry.value = value;
-    m_fimEntry = std::unique_ptr<fim_entry, FimRegistryValueDeleter>(fim);
+    fim.type = FIM_TYPE_REGISTRY;
+    fim.registry_entry.value->size = m_size;
+    fim.registry_entry.value->id = m_keyUid;
+    fim.registry_entry.value->name = reinterpret_cast<char*>(std::calloc(m_identifier.length()+1, sizeof(char)));;
+    std::strncpy(fim.registry_entry.value->name, m_identifier.c_str(), m_identifier.length()+1);
+    std::strncpy(fim.registry_entry.value->hash_md5, m_md5.c_str(), sizeof(fim.registry_entry.value->hash_md5));
+    std::strncpy(fim.registry_entry.value->hash_sha1, m_sha1.c_str(), sizeof(fim.registry_entry.value->hash_sha1));
+    std::strncpy(fim.registry_entry.value->hash_sha256, m_sha256.c_str(), sizeof(fim.registry_entry.value->hash_sha256));
+    fim.registry_entry.value->mode = m_mode;
+    fim.registry_entry.value->last_event = m_lastEvent;
+    fim.registry_entry.value->scanned = m_scanned;
+    std::strncpy(fim.registry_entry.value->checksum, m_checksum.c_str(), sizeof(fim.registry_entry.value->checksum));
 }
 
 void RegistryValue::createJSON()

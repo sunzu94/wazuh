@@ -14,22 +14,6 @@
 #include "json.hpp"
 #include "dbItem.hpp"
 
-struct FimRegistryValueDeleter
-{
-    void operator()(fim_entry* fimRegistryValue)
-    {
-        if (fimRegistryValue)
-        {
-            if (fimRegistryValue->registry_entry.value)
-            {
-                std::free(fimRegistryValue->registry_entry.value);
-            }
-
-            std::free(fimRegistryValue);
-        }
-    }
-};
-
 class RegistryValue final : public DBItem
 {
     public:
@@ -48,32 +32,6 @@ class RegistryValue final : public DBItem
             m_sha1 = std::string(fim->registry_entry.value->hash_sha1);
             m_sha256 = std::string(fim->registry_entry.value->hash_sha256);
             createJSON();
-            createFimEntry();
-        }
-
-        RegistryValue(const std::string& name,
-                      const std::string& checksum,
-                      const time_t& lastEvent,
-                      const unsigned int& scanned,
-                      const fim_event_mode& mode,
-                      const unsigned int& registryKey,
-                      const unsigned int& rowID,
-                      const std::string& md5,
-                      const std::string& sha1,
-                      const std::string& sha256,
-                      const unsigned int& size,
-                      const unsigned int& type)
-            : DBItem(name, scanned, lastEvent, checksum, mode)
-            , m_keyUid( rowID )
-            , m_registryKey ( registryKey )
-            , m_size( size )
-            , m_type( type )
-            , m_md5( md5 )
-            , m_sha1( sha1 )
-            , m_sha256( sha256 )
-        {
-            createFimEntry();
-            createJSON();
         }
 
         RegistryValue(const nlohmann::json& fim)
@@ -86,17 +44,16 @@ class RegistryValue final : public DBItem
             m_md5 = fim.at("hash_md5");
             m_sha1 = fim.at("hash_sha1");
             m_sha256 = fim.at("hash_sha256");
-            createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
         }
 
         ~RegistryValue() = default;
-        fim_entry* toFimEntry()
+        void toFimEntry(fim_entry& fim)
         {
-            return m_fimEntry.get();
+            createFimEntry(fim);
         };
 
-        nlohmann::json* toJSON()
+        const nlohmann::json* toJSON() const
         {
             return m_statementConf.get();
         };
@@ -109,10 +66,9 @@ class RegistryValue final : public DBItem
         std::string                                         m_md5;
         std::string                                         m_sha1;
         std::string                                         m_sha256;
-        std::unique_ptr<fim_entry, FimRegistryValueDeleter> m_fimEntry;
         std::unique_ptr<nlohmann::json>                     m_statementConf;
 
-        void createFimEntry();
+        void createFimEntry(fim_entry& fim);
         void createJSON();
 };
 #endif //_REGISTRYVALUE_HPP
