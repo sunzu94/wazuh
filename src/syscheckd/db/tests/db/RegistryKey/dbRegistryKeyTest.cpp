@@ -51,18 +51,6 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromFIM)
     });
 }
 
-TEST_F(RegistryKeyTest, registryKeyConstructorFromParameters)
-{
-    EXPECT_NO_THROW(
-    {
-        auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                                   0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
-        auto scanned = key->state();
-        EXPECT_TRUE(scanned);
-        delete key;
-    });
-}
-
 TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON)
 {
     const auto json = R"(
@@ -81,31 +69,13 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON)
     });
 }
 
-TEST_F(RegistryKeyTest, getFIMEntryWithParametersCtr)
-{
-    auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                               0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
-    auto keyEntry = key->toFimEntry();
-    ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
-    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->checksum, fimEntryTest->registry_entry.key->checksum), 0);
-    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->gid, fimEntryTest->registry_entry.key->gid), 0);
-    ASSERT_EQ(fimEntryTest->registry_entry.key->arch, fimEntryTest->registry_entry.key->arch);
-    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->path, fimEntryTest->registry_entry.key->path), 0);
-    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->group_name, fimEntryTest->registry_entry.key->group_name), 0);
-    ASSERT_EQ(keyEntry->registry_entry.key->last_event, fimEntryTest->registry_entry.key->last_event);
-    ASSERT_EQ(keyEntry->registry_entry.key->mtime, fimEntryTest->registry_entry.key->mtime);
-    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->perm, fimEntryTest->registry_entry.key->perm), 0);
-    ASSERT_EQ(keyEntry->registry_entry.key->scanned, fimEntryTest->registry_entry.key->scanned);
-    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->uid, fimEntryTest->registry_entry.key->uid), 0);
-    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->user_name, fimEntryTest->registry_entry.key->user_name), 0);
-
-    delete key;
-}
-
 TEST_F(RegistryKeyTest, getFIMEntryWithFimCtr)
 {
-    auto key = new RegistryKey(fimEntryTest);
-    auto keyEntry = key->toFimEntry();
+
+    auto registryKey = new RegistryKey(fimEntryTest);
+    auto keyEntry = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
+    keyEntry->registry_entry.key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
+    registryKey->toFimEntry(*keyEntry);
     ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->checksum, fimEntryTest->registry_entry.key->checksum), 0);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->gid, fimEntryTest->registry_entry.key->gid), 0);
@@ -119,7 +89,8 @@ TEST_F(RegistryKeyTest, getFIMEntryWithFimCtr)
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->uid, fimEntryTest->registry_entry.key->uid), 0);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->user_name, fimEntryTest->registry_entry.key->user_name), 0);
 
-    delete key;
+    free(keyEntry);
+    delete registryKey;
 }
 
 TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr)
@@ -131,8 +102,11 @@ TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr)
             "uid":0, "user_name":"fakeUser"
         }
     )"_json;
-    auto key = new RegistryKey(json);
-    auto keyEntry = key->toFimEntry();
+
+    auto registryKey = new RegistryKey(json);
+    auto keyEntry = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
+    keyEntry->registry_entry.key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
+    registryKey->toFimEntry(*keyEntry);
     ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->checksum, fimEntryTest->registry_entry.key->checksum), 0);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->gid, fimEntryTest->registry_entry.key->gid), 0);
@@ -146,22 +120,8 @@ TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr)
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->uid, fimEntryTest->registry_entry.key->uid), 0);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->user_name, fimEntryTest->registry_entry.key->user_name), 0);
 
-    delete key;
-}
-
-TEST_F(RegistryKeyTest, getJSONWithParametersCtr)
-{
-    auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                               0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
-    const auto expectedValue = R"(
-        {
-            "arch":1, "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root",
-            "id":"50", "last_event":1596489275, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--",
-            "scanned":1, "uid":0, "user_name":"fakeUser"
-        }
-    )"_json;
-    ASSERT_TRUE(*key->toJSON() == expectedValue);
-    delete key;
+    free(keyEntry);
+    delete registryKey;
 }
 
 TEST_F(RegistryKeyTest, getJSONWithFimCtr)

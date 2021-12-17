@@ -12,7 +12,6 @@
 #include "dbFileItemTest.h"
 #include "syscheck.h"
 
-
 void FileItemTest::SetUp()
 {
     fimEntryTest = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
@@ -58,23 +57,6 @@ TEST_F(FileItemTest, fileItemConstructorFromFIM)
     });
 }
 
-TEST_F(FileItemTest, fileItemConstructorFromParameters)
-{
-    EXPECT_NO_THROW(
-    {
-        auto file = new FileItem("/tmp/hello_world.txt",
-                                 "0f05afadabd7e2bc6840e85b0dd1ad2902de9635",
-                                 std::time_t(0), FIM_SCHEDULED,
-                                 1, 0, 0, 0, std::time_t(0), 3732, 3, 0, "10",
-                                 "fakeGroup", "d41d8cd98f00b204e9800998ecf8427e", "-rw-rw-r--",
-                                 "da39a3ee5e6b4b0d3255bfef95601890afd80709",
-                                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "fakeUser");
-        auto scanned = file->state();
-        EXPECT_TRUE(scanned);
-        delete file;
-    });
-}
-
 TEST_F(FileItemTest, fileItemConstructorFromJSON)
 {
     const auto json = R"(
@@ -95,40 +77,12 @@ TEST_F(FileItemTest, fileItemConstructorFromJSON)
     });
 }
 
-TEST_F(FileItemTest, getFIMEntryWithParametersCtr)
-{
-    auto file = new FileItem("/etc/wgetrc", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, FIM_SCHEDULED,
-                             1, 131583, 0, 0, 1578075431, 4925, 2051, 18277083, "10", "root",
-                             "4b531524aa13c8a54614100b570b3dc7", "-rw-rw-r--", "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-                             "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "fakeUser");
-    auto fileEntry = file->toFimEntry();
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.path, fimEntryTest->file_entry.path), 0);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->attributes, fimEntryTest->file_entry.data->attributes), 0);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->checksum, fimEntryTest->file_entry.data->checksum), 0);
-    ASSERT_EQ(fileEntry->file_entry.data->dev, fimEntryTest->file_entry.data->dev);
-    ASSERT_EQ(fileEntry->file_entry.data->inode, fimEntryTest->file_entry.data->inode);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->hash_md5, fimEntryTest->file_entry.data->hash_md5), 0);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->hash_sha1, fimEntryTest->file_entry.data->hash_sha1), 0);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->hash_sha256, fimEntryTest->file_entry.data->hash_sha256), 0);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->gid, fimEntryTest->file_entry.data->gid), 0);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->group_name, fimEntryTest->file_entry.data->group_name), 0);
-    ASSERT_EQ(fileEntry->file_entry.data->last_event, fimEntryTest->file_entry.data->last_event);
-    ASSERT_EQ(fileEntry->file_entry.data->mode, fimEntryTest->file_entry.data->mode);
-    ASSERT_EQ(fileEntry->file_entry.data->mtime, fimEntryTest->file_entry.data->mtime);
-    ASSERT_EQ(fileEntry->file_entry.data->options, fimEntryTest->file_entry.data->options);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->perm, fimEntryTest->file_entry.data->perm), 0);
-    ASSERT_EQ(fileEntry->file_entry.data->scanned, fimEntryTest->file_entry.data->scanned);
-    ASSERT_EQ(fileEntry->file_entry.data->size, fimEntryTest->file_entry.data->size);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->uid, fimEntryTest->file_entry.data->uid), 0);
-    ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->user_name, fimEntryTest->file_entry.data->user_name), 0);
-
-    delete file;
-}
-
 TEST_F(FileItemTest, getFIMEntryWithFimCtr)
 {
-    auto file = new FileItem(fimEntryTest);
-    auto fileEntry = file->toFimEntry();
+    auto fileItem = new FileItem(fimEntryTest);
+    auto fileEntry = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
+    fileEntry->file_entry.data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
+    fileItem->toFimEntry(*fileEntry);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.path, fimEntryTest->file_entry.path), 0);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->attributes, fimEntryTest->file_entry.data->attributes), 0);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->checksum, fimEntryTest->file_entry.data->checksum), 0);
@@ -149,7 +103,8 @@ TEST_F(FileItemTest, getFIMEntryWithFimCtr)
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->uid, fimEntryTest->file_entry.data->uid), 0);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->user_name, fimEntryTest->file_entry.data->user_name), 0);
 
-    delete file;
+    free(fileEntry);
+    delete fileItem;
 }
 
 TEST_F(FileItemTest, getFIMEntryWithJSONCtr)
@@ -163,8 +118,11 @@ TEST_F(FileItemTest, getFIMEntryWithJSONCtr)
             "uid":0, "user_name":"fakeUser"
         }
     )"_json;
-    auto file = new FileItem(json);
-    auto fileEntry = file->toFimEntry();
+
+    auto fileItem = new FileItem(json);
+    auto fileEntry = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
+    fileEntry->file_entry.data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
+    fileItem->toFimEntry(*fileEntry);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.path, fimEntryTest->file_entry.path), 0);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->attributes, fimEntryTest->file_entry.data->attributes), 0);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->checksum, fimEntryTest->file_entry.data->checksum), 0);
@@ -185,26 +143,8 @@ TEST_F(FileItemTest, getFIMEntryWithJSONCtr)
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->uid, fimEntryTest->file_entry.data->uid), 0);
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.data->user_name, fimEntryTest->file_entry.data->user_name), 0);
 
-    delete file;
-}
-
-TEST_F(FileItemTest, getJSONWithParametersCtr)
-{
-    auto file = new FileItem("/etc/wgetrc", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, FIM_SCHEDULED,
-                             1, 131583, 0, 0, 1578075431, 4925, 2051, 18277083, "10", "root",
-                             "4b531524aa13c8a54614100b570b3dc7", "-rw-rw-r--", "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-                             "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "fakeUser");
-    const auto expectedValue = R"(
-        {
-            "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":0, "group_name":"root",
-            "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083, "last_event":1596489275,
-            "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
-            "uid":0, "user_name":"fakeUser"
-        }
-    )"_json;
-    ASSERT_TRUE(*file->toJSON() == expectedValue);
-    delete file;
+    free(fileEntry);
+    delete fileItem;
 }
 
 TEST_F(FileItemTest, getJSONWithFimCtr)
