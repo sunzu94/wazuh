@@ -1075,10 +1075,15 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        wdb_update_agent_group(atoi(agent_id), group, NULL);
+        wdb_set_agent_groups_csv(atoi(agent_id),
+                                 group,
+                                 WDB_GROUP_MODE_EMPTY_ONLY,
+                                 w_is_worker() ? "syncreq" : "synced",
+                                 WDB_GROUP_SOURCE_MANUAL,
+                                 NULL);
+
         os_strdup(group, *r_group);
         ret = OS_SUCCESS;
-        mdebug2("Group assigned: '%s'", group);
         break;
     }
 
