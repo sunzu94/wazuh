@@ -23,7 +23,7 @@
 #define OSSEC_LDEFINES   "./local_internal_options.conf"
 #endif
 
-#define DEFAULT_IPV6_PREFIX  64
+#define DEFAULT_IPV6_PREFIX  128
 #define DEFAULT_IPV4_NETMASK 32
 
 
@@ -40,6 +40,9 @@ static const char *__gethour(const char *str, char *ossec_hour) __attribute__((n
  */
 static int convertNetmask(int netnumb, struct in6_addr *nmask6);
 
+static int expandIPv6str(const char *ip, char *dst_ip, int cidr);
+
+static int getCIDRipv6(uint8_t *netmask);
 
 /* Global variables */
 static int _mask_inited = 0;
@@ -54,22 +57,25 @@ static unsigned int _netmasks[33];
 *             example: "2001:db8:abcd:0012:0000:0000:0000:0000" or "11AA::11AA" or "::11AA:11AA:11AA:11AA/64"
 */
 
+
 #define IPV4_ADDRESS "(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\x5c.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
 #define IPV6_PREFIX "12[0-8]|1[0-1][0-9]|[0-9]?[0-9]"
 
+#define IPV4_MASK_IPV6 "^::[fF]{4}:("IPV4_ADDRESS"(?:\x2F(?:(?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?)$"
+
 static  char *ip_address_regex[] = {
 // IPv4
-"^("IPV4_ADDRESS")(?:\x2F((?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?$",
+"^(?:::[fF]{4}:)?("IPV4_ADDRESS")(?:\x2F((?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?$",
 // IPv6
-"^((?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,6}(?::[0-9a-fA-F]{1,4}){1})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1}(?::[0-9a-fA-F]{1,4}){1,6})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,7}:)(?:[\x2F]("IPV6_PREFIX"))?$",
-"^(:(?::[0-9a-fA-F]{1,4}){1,7})(?:[\x2F]("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,6}(?::[0-9a-fA-F]{1,4}){1})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1}(?::[0-9a-fA-F]{1,4}){1,6})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,7}:)(?:\x2F("IPV6_PREFIX"))?$",
+"^(:(?::[0-9a-fA-F]{1,4}){1,7})(?:\x2F("IPV6_PREFIX"))?$",
 "^(::)$",
 NULL,
 };
@@ -173,8 +179,8 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     return (NULL);
 }
 
-/* convert to netmasks from number */
-int convertNetmask(int netnumb, struct in6_addr *nmask6)
+/* convert to netmasks from CIDR number */
+static int convertNetmask(int netnumb, struct in6_addr *nmask6)
 {
     if (netnumb < 0 || netnumb > 128) {
         return -1;
@@ -183,25 +189,18 @@ int convertNetmask(int netnumb, struct in6_addr *nmask6)
     uint32_t aux = 0;
     uint32_t index = 0;
     uint8_t variable_size = 8;
-    for (int i = 0; i < 16; i++) {
 
+    for (int i = 0; i < 16; i++) {
 #ifndef WIN32
         nmask6->s6_addr[i] = 0;
 #else
         nmask6->u.Byte[i] = 0;
 #endif
-
-        if (netnumb > variable_size) {
-            index = variable_size;
-            netnumb -= variable_size;
-        } else {
-            index = netnumb;
-            netnumb = 0;
-        }
+        index = ((netnumb > variable_size) ? variable_size : netnumb);
+        netnumb -= index;
 
         for (uint8_t a = 0; a < index; a++) {
             aux = variable_size - a -1;
-
 #ifndef WIN32
             nmask6->s6_addr[i] += UINT8_C(1) << aux;
 #else
@@ -387,6 +386,37 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
     return (!_true);
 }
 
+int OS_GetIPv4FromIPv6(const char *ip_address, char *ipv4) {
+
+    w_expression_t * exp;
+    int ret = 0;
+
+    regex_matching * regex_match = NULL;
+    os_calloc(1, sizeof(regex_matching), regex_match);
+
+    w_calloc_expression_t(&exp, EXP_TYPE_PCRE2);
+    if (w_expression_compile(exp, IPV4_MASK_IPV6, 0) &&
+         w_expression_match(exp, ip_address, NULL, regex_match)) {
+
+        /* number of regex captures */
+        if (regex_match->d_size.prts_str_alloc_size/sizeof(char*)) {
+            ret = 1;
+            strcpy(ipv4, regex_match->sub_strings[0]);
+        }
+    }
+
+    if (regex_match) {
+        if (regex_match->sub_strings) {
+            os_free(regex_match->sub_strings[0]);
+            os_free(regex_match->sub_strings);
+        }
+        os_free(regex_match);
+    }
+    w_free_expression_t(&exp);
+
+    return ret;
+}
+
 /* Validate if an IP address is in the right format
  * Returns 0 if doesn't match or 1 if it is an IP or 2 an IP with CIDR.
  * WARNING: On success this function may modify the value of ip_address
@@ -400,14 +430,19 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
         return (0);
     }
 
+    if (*ip_address == '!') {
+        ip_address++;
+    }
+
     /* Assign the IP address */
     if (final_ip) {
         memset(final_ip, 0, sizeof(os_ip));
-        os_strdup(ip_address, final_ip->ip);
-    }
 
-    if (*ip_address == '!') {
-        ip_address++;
+        char aux_ip[IPSIZE + 1] = {0};
+        if (!OS_GetIPv4FromIPv6(ip_address, aux_ip)) {
+            strcpy(aux_ip, ip_address);
+        }
+        os_strdup(aux_ip, final_ip->ip);
     }
 
     if (strcmp(ip_address, "any") != 0) {
@@ -434,6 +469,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                     if (final_ip) {
                         os_calloc(1, sizeof(os_ipv6), final_ip->ipv6);
                         final_ip->is_ipv6 = TRUE;
+                        int cidr = 0;
 
                         /* At this point regex can capture 1 or 2 strings, first is the ip and second the prefix */
                         if (sub_strings_num > 0) {
@@ -450,8 +486,9 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
                             if (sub_strings_num == 2) {
                                 /* prefix */
+                                cidr = atoi(regex_match->sub_strings[1]);
                                 if ((strlen(regex_match->sub_strings[1]) > 3) ||
-                                      convertNetmask(atoi(regex_match->sub_strings[1]), &nmask6)) {
+                                      convertNetmask(cidr, &nmask6)) {
                                     ret = 0;
                                     break;
                                 }
@@ -471,6 +508,8 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                             }
                             memcpy(final_ip->ipv6->netmask, nmask6.u.Byte, sizeof(final_ip->ipv6->netmask));
 #endif
+                            os_realloc(final_ip->ip, IPSIZE, final_ip->ip);
+                            expandIPv6str(regex_match->sub_strings[0], final_ip->ip, cidr);
 
                         } else {
                             ret = 0;
@@ -507,14 +546,16 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                     if (!_mask_inited) {
                                         _init_masks();
                                     }
-                                    nmask.s_addr = _netmasks[cidr];
-                                    nmask.s_addr = htonl(nmask.s_addr);
+                                    nmask.s_addr = htonl(_netmasks[cidr]);
                                 } else if (OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[1], &nmask)) {
                                     ret = 0;
                                     break;
                                 }
                                 ret = 2;
                             } else {
+                                if (!_mask_inited) {
+                                    _init_masks();
+                                }
                                 nmask.s_addr = htonl(_netmasks[DEFAULT_IPV4_NETMASK]);
                             }
 
@@ -547,16 +588,49 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
     else {
         /* any case */
         if (final_ip) {
-            os_calloc(1, sizeof(os_ipv4), final_ip->ipv4);
+            os_calloc(1, sizeof(os_ipv6), final_ip->ipv6);
             final_ip->is_ipv6 = FALSE;
-            final_ip->ipv4->ip_address = 0;
-            final_ip->ipv4->netmask = 0;
+            memset(final_ip->ipv6->ip_address, 0, sizeof(final_ip->ipv6->ip_address));
+            memset(final_ip->ipv6->netmask, 0, sizeof(final_ip->ipv6->netmask));
         }
         ret = 2;
     }
 
     return ret;
 }
+
+
+static int expandIPv6str(const char *ip, char *dst_ip, int cidr) {
+
+    struct in6_addr net6;
+    memset(&net6, 0, sizeof(net6));
+
+    if (OS_INVALID == get_ipv6_numeric(ip, &net6)) {
+        return OS_INVALID;
+    }
+
+    uint8_t aux[16];
+    for(unsigned int i = 0; i < 16; i++) {
+#ifndef WIN32
+        aux[i] = net6.s6_addr[i];
+#else
+        aux[i] = net6.u.Byte[i];
+#endif
+    }
+
+    sprintf(dst_ip, "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+         (int)aux[0], (int)aux[1], (int)aux[2], (int)aux[3],
+         (int)aux[4], (int)aux[5], (int)aux[6], (int)aux[7],
+         (int)aux[8], (int)aux[9], (int)aux[10], (int)aux[11],
+         (int)aux[12], (int)aux[13], (int)aux[14], (int)aux[15]);
+
+    if (cidr) {
+        char *aux_ip = dst_ip;
+        sprintf(dst_ip, "%s/%u", aux_ip, cidr);
+    }
+    return OS_SUCCESS;
+}
+
 
 
 /* Must be a valid string, called after OS_IsValidTime
@@ -906,10 +980,20 @@ char *OS_IsValidDay(const char *day_str)
 
 // Convert a CIDR into string: aaa.bbb.ccc.ddd[/ee]
 int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
-    int imask;
+    int imask = 0;
+    bool is_ipv6 = false;
     uint32_t hmask;
 
-    if ((ip->is_ipv6 == false) &&
+    if (strchr(ip->ip, ':') != NULL) {
+        is_ipv6 = true;
+        imask = getCIDRipv6(ip->ipv6->netmask);
+    }
+
+    if (is_ipv6 && imask < 128) {
+
+        return ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1);
+
+    } else if (!is_ipv6 &&
         (ip->ipv4->netmask != 0xFFFFFFFF) &&
             strcmp(ip->ip, "any")) {
 
@@ -920,12 +1004,30 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
         hmask = ntohl(ip->ipv4->netmask);
         for (imask = 0; imask < 32 && _netmasks[imask] != hmask; imask++);
         return (imask < 32) ? ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1) : -1;
+
     } else {
         strncpy(string, ip->ip, size - 1);
         string[size - 1] = '\0';
         return 0;
     }
 }
+
+static int getCIDRipv6(uint8_t *netmask) {
+
+    int imask = 0;
+    uint8_t aux = 0;
+    for (uint8_t i = 0; i < 16; i++) {
+        aux = netmask[i];
+        for (uint8_t a = 0; a < 8 && aux > 0; a++) {
+            if (0x01 & aux) {
+                imask++;
+            }
+            aux = aux >> UINT8_C(1);
+        }
+    }
+    return imask;
+}
+
 
 /* Validate the day of the week set and retrieve its corresponding integer value.
    If not found, -1 is returned.
